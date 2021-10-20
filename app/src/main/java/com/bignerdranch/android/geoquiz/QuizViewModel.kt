@@ -13,6 +13,8 @@ class QuizViewModel : ViewModel() {
         Question(R.string.question_oceans3,false)
     )
     var currentIndex = 0
+    var isCheater = false
+    var answerShown = false
     val currentQuestionAnnswer: Boolean
         get() = questionBank[currentIndex].answer
     val currentQuestionText: Int

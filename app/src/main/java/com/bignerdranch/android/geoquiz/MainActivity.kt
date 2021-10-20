@@ -1,6 +1,9 @@
 package com.bignerdranch.android.geoquiz
 
+import android.app.Activity
+import android.app.ActivityOptions
 import android.content.Intent
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.PersistableBundle
@@ -10,6 +13,7 @@ import android.widget.AutoCompleteTextView
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 
@@ -25,12 +29,12 @@ class MainActivity : AppCompatActivity() {
 
     private val Tag = "MainActivity"
     private val KEY_INDEX = "index"
-    //private var answerList = mutableListOf<Int>(questionBank.size)
-    //private var scoreList = mutableListOf<Int>(questionBank.size)
+    private val REQUEST_CODE_CHEAT = 0
 
     private val quizViewModel:QuizViewModel by lazy {
         ViewModelProviders.of(this).get(QuizViewModel::class.java)
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(Tag,"onCreate")
@@ -52,34 +56,47 @@ class MainActivity : AppCompatActivity() {
             }
 
         questionTextView.setOnClickListener {
-            //currentIndex =(currentIndex + 1) % questionBank.size
             quizViewModel.moveToNext()
             updateQuestion()
         }
 
         nextButton.setOnClickListener {
-            //currentIndex =(currentIndex + 1) % questionBank.size
             quizViewModel.moveToNext()
             updateQuestion()
 
         }
 
         cheatButton.setOnClickListener {
-            val intent = Intent(this, CheatActivity::class.java)
-            startActivity(intent)
+            val answerIsTrue = quizViewModel.currentQuestionAnnswer
+            val intent = CheatActivity.newIntent(this@MainActivity, answerIsTrue)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val options = ActivityOptions.makeClipRevealAnimation(it, 0, 0, it.width, it.height)
+                startActivityForResult(intent, REQUEST_CODE_CHEAT, options.toBundle())
+            }
+            else{
+                startActivityForResult(intent, REQUEST_CODE_CHEAT)
+            }
         }
 
         prevButton.setOnClickListener {
-//            currentIndex = (currentIndex -1)  % questionBank.size
-//            if(currentIndex < 0) {
-//                currentIndex = questionBank.size - 1
-//            }
             quizViewModel.moveToNext()
             updateQuestion()
         }
 
         updateQuestion()
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+    if (resultCode != Activity.RESULT_OK){
+        return
+    }
+    if (requestCode == REQUEST_CODE_CHEAT){
+        quizViewModel.isCheater = data?.getBooleanExtra(EXTRA_ANSWER_SHOWN, false) ?: false
+    }
+
+    }
+
     private fun updateQuestion(){
         val questionTextResId = quizViewModel.currentQuestionText
         questionTextView.setText(questionTextResId)
@@ -87,31 +104,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkAnswer(userAnswer:Boolean)
     {
-        //answerList.add(currentIndex, 1)
-        //if (answerList.elementAtOrNull(currentIndex) == null) {
-            //val correctAnswer = questionBank[currentIndex].answer;
-            val correctAnswer = quizViewModel.currentQuestionAnnswer
-            val message = if (userAnswer == correctAnswer) {
-                //scoreList.add(currentIndex,1)
-                R.string.correct_toast
-            } else {
-                //scoreList.add(currentIndex, 0)
-                R.string.incorrect_toast
-            }
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-       // }
-//        else{
-//            Toast.makeText(this,R.string.questionAnswered,Toast.LENGTH_SHORT).show()
-//            if (answerList.sum() == questionBank.size)
-//            {
-//                val sum = scoreList.sum()*20
-//                Toast.makeText(this,"your percentage is "+sum,Toast.LENGTH_SHORT).show()
-//            }
-//            else{
-//                Toast.makeText(this,R.string.questionAnswered,Toast.LENGTH_SHORT).show()
-//            }
-//        }
-
+        val correctAnswer = quizViewModel.currentQuestionAnnswer
+        val message = when {
+            quizViewModel.isCheater -> R.string.judgment_toast
+            userAnswer == correctAnswer -> R.string.correct_toast
+            else -> R.string.incorrect_toast
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     override fun onStart() {
